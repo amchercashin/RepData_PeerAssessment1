@@ -38,7 +38,7 @@ library(dplyr)
 Lets make a histogram of the total number of steps taken each day:
 
 ```r
-activityByDate <- group_by(activity, date) %>% summarise(steps = sum(steps))
+activityByDate <- group_by(na.omit(activity), date) %>% summarise(steps = sum(steps))
 barplot(activityByDate$steps)
 ```
 
@@ -63,7 +63,12 @@ median(activityByDate$steps, na.rm = TRUE)
 ```
 ## What is the average daily activity pattern?
 
+```r
+activityByInterval <- group_by(na.omit(activity), interval) %>% summarise(stepsmean = mean(steps))
+plot(activityByInterval$interval, activityByInterval$stepsmean, type="l")
+```
 
+![](PA1_template_files/figure-html/unnamed-chunk-7-1.png) 
 
 ## Imputing missing values
 
