@@ -30,7 +30,7 @@ library(dplyr)
 Lets make a histogram of the total number of steps taken each day:
 ```{r} 
 activityByDate <- group_by(na.omit(activity), date) %>% summarise(steps = sum(steps))
-barplot(activityByDate$steps)
+barplot(activityByDate$steps, names.arg=activityByDate$date, cex.names=0.5, las=2)
 ```
 
 Then lets calculate the mean and median total number of steps taken per day:
@@ -41,13 +41,66 @@ mean(activityByDate$steps, na.rm = TRUE)
 median(activityByDate$steps, na.rm = TRUE)
 ```
 ## What is the average daily activity pattern?
+
+Lets look at time series plot of the 5-minute intervals (x-axis) with average number of steps taken, averaged across all days (y-axis):
 ```{r}
 activityByInterval <- group_by(na.omit(activity), interval) %>% summarise(stepsmean = mean(steps))
 plot(activityByInterval$interval, activityByInterval$stepsmean, type="l")
 ```
 
+The 5-minute interval that contains maximum number of steps on average across all the days is:
+```{r}
+activityByInterval$interval[activityByInterval$stepsmean == max(activityByInterval$stepsmean)]
+```
+
 ## Imputing missing values
 
+Total number with missing values (by columns) is:
+```{r}
+sapply(activity, function(col) {sum(is.na(col))})
+```
 
+As a simple strategy to impute missing values we will take means for that 5-minute intervals across all the days in the dataset.
+```{r}
+# generate sequence of intervals where NA are
+intervalsToLookFor <- activity$interval[is.na(activity$steps)]
+
+# generate sequence of row numbers from activityByInternal corresponding to intervalsToLookFor
+rowNumbers <- match(intervalsToLookFor, activityByInterval$interval)
+
+# extract sequence of steps means of the same length using rownumbers
+means <- activityByInterval$stepsmean[rowNumbers]                             
+
+#assign this means to NA values of main dataset
+activity$steps[is.na(activity$steps)] <- means
+```
+
+Lets make a histogram of the total number of steps taken each day and calculate the mean and median total number of steps taken per day again:
+```{r} 
+activityByDate <- group_by(na.omit(activity), date) %>% summarise(steps = sum(steps))
+barplot(activityByDate$steps, names.arg=activityByDate$date, cex.names=0.5, las=2)
+
+mean(activityByDate$steps, na.rm = TRUE)
+median(activityByDate$steps, na.rm = TRUE)
+```
+
+Some days are added like 2012-10-01 or 2012-11-30, but the mean and median is pretty the same. We can see that now it is perfect normal destribution with mean = median.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+We will create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day:
+```{r}
+#extracting weekdays as numbers where sunday = 0 and saturday = 6
+weekdaysAsNum <- as.POSIXlt((as.Date(activity$date)))$wday
+
+# constructing the factor variable and assigning it to new column "datetype"
+weekdaysAsNum[weekdaysAsNum > 0 & weekdaysAsNum < 6] <- "weekday"
+weekdaysAsNum[weekdaysAsNum == 0 | weekdaysAsNum == 6] <- "weekend"
+activity$datetype <- factor(weekdaysAsNum)
+```
+
+Making a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). We will use lattice package for the plot, so be sure to have it otherwise install with ```install.packages("lattice")```
+```{r}
+library(lattice)
+activityByInterval <- group_by(activity, interval, datetype) %>% summarise(stepsmean = mean(steps))
+xyplot(stepsmean ~ interval | datetype, data = activityByInterval, layout = c(1,2), type = "l")
+```
